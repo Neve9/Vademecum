@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vademecum - Debug Salvataggio</title>
+    <!-- Link a Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Reset Base e Font */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e0e8e5; color: #333; min-height: 100vh; }
+
+        /* Contenitori Viste */
+        .view-container { display: none; width: 100%; max-width: 1200px; margin: 20px auto; background-color: #e0e8e5; border-radius: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .view-container.active { display: block; }
+        #dashboardView.active { display: flex; }
+
+        /* Sidebar */
+        .sidebar { width: 250px; background-color: #e0e8e5; padding: 30px 20px; display: flex; flex-direction: column; gap: 25px; border-right: 1px solid #c8d5d0; flex-shrink: 0; }
+        .sidebar-header { display: flex; align-items: center; gap: 10px; }
+        .sidebar-header .icon { font-size: 1.8em; color: #3a6b4b; line-height: 1; }
+        .sidebar-header .icon img { height: 28px; width: auto; vertical-align: middle; }
+        .sidebar-header h1 { font-size: 1.4em; font-weight: 600; color: #3a6b4b; letter-spacing: 1px; }
+        .search-bar { position: relative; display: flex; align-items: center; background-color: #f5f5f0; padding: 8px 12px; border-radius: 20px; border: 1px solid #dcdcd3; }
+        .search-bar .icon { margin-right: 8px; height: 20px; display: flex; align-items: center; }
+        .search-bar .icon img { height: 100%; width: auto; }
+        .search-bar input { flex-grow: 1; border: none; outline: none; background: none; font-size: 0.95em; color: #555; padding-right: 25px; }
+        .search-bar input::placeholder { color: #a0a0a0; }
+        #clearSearchBtn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2em; color: #aaa; cursor: pointer; padding: 5px; line-height: 1; display: none; }
+        #clearSearchBtn:hover { color: #777; }
+
+        /* Riquadro Archivio */
+        .archive-card { background-color: #f5f5f0; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; border: 1px solid #dcdcd3; transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; display: flex; flex-direction: column; min-height: 220px; }
+        .archive-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+        .archive-card .archive-image-container { width: 100%; margin-bottom: 10px; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+        .archive-card .archive-image-container img { max-width: 100%; max-height: 150px; height: auto; border-radius: 8px; object-fit: contain; }
+        .archive-card p { color: #3a6b4b; font-weight: 500; font-size: 1.1em; margin-top: auto; pointer-events: none; }
+
+        /* Icone sulle Card Griglia */
+        .card-add-icon, .card-delete-icon { position: absolute; background-color: rgba(0, 0, 0, 0.4); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: bold; z-index: 2; cursor: pointer; transition: background-color 0.2s ease; }
+        .card-add-icon { top: 10px; right: 10px; }
+        .card-delete-icon { top: 10px; left: 10px; background-color: rgba(231, 76, 60, 0.6); }
+        .card-delete-icon:hover { background-color: rgba(192, 57, 43, 0.8); }
+        .card-light .card-add-icon { background-color: rgba(0, 0, 0, 0.4); color: white; }
+        .card-dark .card-add-icon { background-color: rgba(255, 255, 255, 0.3); color: #333; }
+        .card-green .card-add-icon { background-color: rgba(255, 255, 255, 0.3); color: #3a6b4b; }
+        .archive-card .card-add-icon { background-color: rgba(0, 0, 0, 0.4); color: white; }
+
+        /* Main Content Dashboard */
+        .main-content { flex-grow: 1; padding: 30px; display: flex; flex-direction: column; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; margin-bottom: 30px; }
+
+        /* Stile Card Griglia */
+        .card { background-color: #fff; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; min-height: 200px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; box-shadow: 0 3px 8px rgba(0,0,0,0.05); }
+        .card:not(.archive-card):hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .card .card-icon { flex-grow: 1; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; width: 100%; max-height: 60px; pointer-events: none; }
+        .card .card-icon img { max-width: 100%; max-height: 100%; height: auto; object-fit: contain; }
+        .card p { font-weight: 500; font-size: 1em; line-height: 1.3; margin-top: auto; pointer-events: none; word-break: break-word; }
+        .card-green { background-color: #3a6b4b; color: #f5f5f0; }
+        .card-dark { background-color: #333; color: #f5f5f0; }
+        .card-light { background-color: #f5f5f0; color: #3a6b4b; }
+        #addCardBtn { cursor: pointer; background-color: #6c8d7b; }
+        #addCardBtn:hover { background-color: #5a7a6a; }
+
+        /* Finestra Modale */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background-color: #ffffff; margin: auto; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); position: relative; animation: fadeInModal 0.3s ease-out; }
+        @keyframes fadeInModal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .modal-close { color: #aaa; position: absolute; top: 10px; right: 15px; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+        .modal-close:hover, .modal-close:focus { color: #333; }
+        .modal-title { margin-bottom: 25px; font-size: 1.5em; color: #3a6b4b; font-weight: 600; }
+        .modal-form label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; font-size: 0.9em; }
+        .modal-form input[type="text"], .modal-form textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; resize: vertical; }
+        .modal-form textarea { min-height: 80px; }
+        .modal-form button { background-color: #3a6b4b; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.2s ease; float: right; }
+        .modal-form button:hover { background-color: #2e533a; }
+
+        /* Stili Vista Dettaglio */
+        #detailView { position: relative; padding: 30px; min-height: 80vh; background-color: #f8fafa; background-image: url('images/background-detail.png'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed; }
+        #detailView::before { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.88); z-index: 1; border-radius: 15px; }
+        #detailView > * { position: relative; z-index: 2; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #dce5e2; flex-wrap: wrap; gap: 10px; }
+        .detail-header h2 { color: #3a6b4b; font-size: 1.8em; margin-right: auto; word-break: break-word; }
+        .detail-header .header-buttons { display: flex; gap: 10px; }
+        .back-button, .add-new-button { background-color: #3a6b4b; color: white; padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.95em; transition: background-color 0.2s ease; white-space: nowrap; }
+        .back-button:hover, .add-new-button:hover { background-color: #2e533a; }
+
+        /* Stile Accordion Items */
+        #detailDataListContainer ul { list-style: none; padding: 0; }
+        .detail-item { background-color: #ffffff; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e8e8e8; overflow: hidden; }
+        .item-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; cursor: pointer; background-color: #ffffff; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s ease; }
+        .item-header:hover { background-color: #fafafa; }
+        .item-header h3 { margin: 0; font-size: 1.1em; font-weight: 600; color: #444; flex-grow: 1; margin-right: 15px; }
+        .item-controls button { background: none; border: none; cursor: pointer; font-size: 1.0em; padding: 5px 8px; margin-left: 5px; color: #999; transition: color 0.2s ease; }
+        .item-controls button:hover { color: #555; }
+        .item-controls .edit-btn:hover { color: #3498db; }
+        .item-controls .archive-btn:hover { color: #e67e22; }
+        .item-controls .delete-btn:hover { color: #e74c3c; }
+        .item-controls .toggle-icon { margin-left: 10px; font-size: 0.9em; color: #ccc; transition: transform 0.3s ease; }
+        .item-header.expanded .toggle-icon { transform: rotate(180deg); color: #888; }
+        .item-content { padding: 0px 20px; max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out, padding 0.4s ease-out; background-color: #ffffff; border-top: 1px dashed #eee; }
+        .item-content.visible { max-height: 500px; padding: 20px 20px; }
+        .item-content p { margin-bottom: 12px; line-height: 1.6; color: #555;}
+        .item-content strong { font-weight: 600; color: #333; }
+        .item-content em { font-size: 0.85em; color: #aaa; display: block; margin-top: 15px; text-align: right; }
+        .detail-item .no-data { color: #555; font-style: italic; padding: 20px; text-align: center; }
+
+        /* Contenitore Dati Dashboard */
+         #savedDataContainer { background-color: #ffffff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-height: 400px; overflow-y: auto; flex-grow: 1; }
+         #savedDataContainer h2 { color: #3a6b4b; margin-bottom: 15px; border-bottom: 2px solid #e0e8e5; padding-bottom: 10px; }
+         #savedDataContainer ul { list-style: none; padding: 0; }
+         #savedDataContainer li { border: 1px solid #eee; margin-bottom: 15px; padding: 15px; border-radius: 8px; background-color: #f9f9f9; position: relative; transition: background-color 0.2s ease; }
+         #savedDataContainer li.search-result-item { cursor: pointer; }
+         #savedDataContainer li.search-result-item:hover { background-color: #eaf2fa; border-left: 3px solid #3498db; padding-left: 12px; }
+         #savedDataContainer li strong { font-weight: 600; }
+         #savedDataContainer li em { font-size: 0.85em; color: #777; display: block; margin-top: 5px; }
+         #savedDataContainer .no-data { color: #555; font-style: italic; }
+         .highlight { background-color: #fff3a1; font-weight: bold; padding: 0 2px; border-radius: 3px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Vista Dashboard -->
+    <div id="dashboardView" class="view-container active">
+        <div class="sidebar"> <div class="sidebar-header"> <span class="icon">🌿</span> <h1>VADEMECUM</h1> </div> <div class="search-bar"> <span class="icon"><img src="images/cerca.png" alt="Cerca"></span> <input type="text" id="searchInput" placeholder="Cerca..."> <button id="clearSearchBtn" title="Pulisci ricerca">&times;</button> </div> <div class="card archive-card" data-type="Archivio"> <div class="card-add-icon" data-type="Archivio" title="Aggiungi ad Archivio">+</div> <div class="archive-image-container"><img src="images/archivio.png" alt="Archivio Immagine"></div> <p>Archivio</p> </div> </div>
+        <div class="main-content"> <div class="grid-container" id="mainGridContainer"> <div class="card card-green" id="addCardBtn"> <div class="card-icon"><img src="images/aggiungi.png" alt="Aggiungi"></div> <p>Aggiungi +</p> </div> <div class="card card-dark" data-type="Proc. Operative"><div class="card-add-icon" data-type="Proc. Operative">+</div><div class="card-icon"><img src="images/proc-operative.png" alt="Proc. Operative"></div><p>Proc. Operative</p></div> <div class="card card-dark" data-type="Comunicazioni da/verso RL"><div class="card-add-icon" data-type="Comunicazioni da/verso RL">+</div><div class="card-icon"><img src="images/comunicazioni-rl.png" alt="Comunicazioni RL"></div><p>Comunicazioni<br>da/verso RL</p></div> <div class="card card-dark" data-type="Comunicazioni da/verso Gruppi interni"><div class="card-add-icon" data-type="Comunicazioni da/verso Gruppi interni">+</div><div class="card-icon"><img src="images/comunicazioni-gruppi.png" alt="Comunicazioni Gruppi"></div><p>Comunicazioni<br>da/verso Gruppi interni</p></div> <div class="card card-light" data-type="Assistenza Portale Istituzionale"><div class="card-add-icon" data-type="Assistenza Portale Istituzionale">+</div><div class="card-icon"><img src="images/assistenza.png" alt="Assistenza"></div><p>Assistenza<br>Portale Istituzionale</p></div> <div class="card card-light" data-type="Problemi tecnici"><div class="card-add-icon" data-type="Problemi tecnici">+</div><div class="card-icon"><img src="images/problemi-tecnici.png" alt="Problemi tecnici"></div><p>Problemi tecnici</p></div> <!-- Custom Cards --> </div> <div id="savedDataContainer"> <h2>Inserimenti recenti</h2> <p>Caricamento dati...</p> </div> </div>
+    </div>
+
+    <!-- Vista Dettaglio -->
+    <div id="detailView" class="view-container"> <div class="detail-header"> <h2 id="detailTitle">Dettaglio Sezione</h2> <div class="header-buttons"> <button class="add-new-button" id="addNewDetailButton">Aggiungi Nuovo</button> <button class="back-button" onclick="navigateToDashboard()">Indietro</button> </div> </div> <div id="detailDataListContainer"> <ul id="detailAccordionList"> <!-- Lista Accordion --> </ul> </div> </div>
+
+    <!-- Finestra Modale -->
+    <div id="entryModal" class="modal"> <div class="modal-content"> <span class="modal-close" onclick="closeModal()">&times;</span> <h2 class="modal-title" id="modalTitle">Aggiungi Elemento</h2> <form class="modal-form" onsubmit="handleSave(event)"> <input type="hidden" id="editItemId" value=""> <input type="hidden" id="modalDataType" value=""> <label for="field1">Oggetto / Titolo:</label> <input type="text" id="field1" name="field1" placeholder="Inserisci..."> <label for="field2">Descrizione / Dettagli:</label> <textarea id="field2" name="field2" placeholder="Inserisci..."></textarea> <label for="field3">Note Aggiuntive / Altro:</label> <input type="text" id="field3" name="field3" placeholder="Inserisci..."> <button type="submit" id="modalSaveButton">Salva Dati</button> </form> </div> </div>
+
+    <script>
+        // --- Elementi DOM ---
+        const modal = document.getElementById('entryModal'); const modalTitle = document.getElementById('modalTitle'); const modalForm = modal.querySelector('.modal-form'); const modalDataTypeInput = document.getElementById('modalDataType'); const editItemIdInput = document.getElementById('editItemId'); const modalSaveButton = document.getElementById('modalSaveButton'); const dashboardView = document.getElementById('dashboardView'); const detailView = document.getElementById('detailView'); const detailTitle = document.getElementById('detailTitle'); const detailAccordionList = document.getElementById('detailAccordionList'); const dashboardDataContainer = document.getElementById('savedDataContainer'); const addNewDetailButton = document.getElementById('addNewDetailButton'); const mainGridContainer = document.getElementById('mainGridContainer'); const addCardBtn = document.getElementById('addCardBtn'); const searchInput = document.getElementById('searchInput'); const clearSearchBtn = document.getElementById('clearSearchBtn');
+        let currentDetailType = null; let searchDebounceTimer; const DEBOUNCE_DELAY = 300;
+        const LAYOUT_STORAGE_KEY = 'vademecumLayout'; const NEXT_ICON_INDEX_KEY = 'vademecumNextIconIndex'; const ICON_CYCLE = [ 'proc-operative.png', 'problemi-tecnici.png', 'assistenza.png', 'comunicazioni-gruppi.png', 'comunicazioni-rl.png' ]; const CARD_CLASS_CYCLE = ['card-dark', 'card-light', 'card-light', 'card-dark', 'card-dark'];
+
+        // --- Funzioni Navigazione ---
+        function navigateToDetail(type) { currentDetailType = type; dashboardView.classList.remove('active'); detailView.classList.add('active'); detailTitle.textContent = `${type}`; addNewDetailButton.onclick = () => openModalForAdd(type); displayDetailData(type); window.scrollTo(0, 0); }
+        function navigateToDashboard() { currentDetailType = null; detailView.classList.remove('active'); dashboardView.classList.add('active'); searchInput.value = ''; clearSearchBtn.style.display = 'none'; displaySavedData(); window.scrollTo(0, 0); }
+
+        // --- Gestione Eventi Click Card ---
+        function addCardClickListeners(cardElement) { const cardType = cardElement.getAttribute('data-type'); if (!cardType) return; const addIcon = cardElement.querySelector('.card-add-icon'); const deleteIcon = cardElement.querySelector('.card-delete-icon'); if(addIcon) { addIcon.addEventListener('click', (event) => { event.stopPropagation(); openModalForAdd(cardType); }); } if(deleteIcon) { deleteIcon.addEventListener('click', (event) => { event.stopPropagation(); const layoutId = parseInt(cardElement.dataset.layoutId, 10); if(layoutId) { handleDeleteCustomCard(layoutId); } }); } cardElement.addEventListener('click', (event) => { if (event.target === addIcon || event.target === deleteIcon || event.target.closest('.card-delete-icon')) return; if (cardElement.id === 'addCardBtn') return; navigateToDetail(cardType); }); }
+        document.querySelectorAll('.card').forEach(addCardClickListeners);
+
+        // --- Gestione Modale ---
+        function openModalForAdd(type) { editItemIdInput.value = ''; modalTitle.textContent = "Aggiungi: " + type; modalSaveButton.textContent = "Salva Nuovo"; modalDataTypeInput.value = type; modalForm.reset(); modal.classList.add('active'); document.getElementById('field1').focus(); }
+        function openModalForEdit(itemId) { const allData = getSavedData(); const itemToEdit = allData.find(item => item.id === itemId); if (!itemToEdit) { alert("Errore: elemento non trovato."); return; } editItemIdInput.value = itemId; modalTitle.textContent = "Modifica: " + itemToEdit.type; modalSaveButton.textContent = "Salva Modifiche"; modalDataTypeInput.value = itemToEdit.type; document.getElementById('field1').value = itemToEdit.field1 || ''; document.getElementById('field2').value = itemToEdit.field2 || ''; document.getElementById('field3').value = itemToEdit.field3 || ''; modal.classList.add('active'); document.getElementById('field1').focus(); }
+        function closeModal() { modal.classList.remove('active'); }
+
+        // --- Funzioni localStorage (Dati e Layout) ---
+        function getSavedData() { const storedData = localStorage.getItem('vademecumData'); let data = []; if (storedData) { try { data = JSON.parse(storedData); if (!Array.isArray(data)) data = []; } catch (e) { console.error("Errore lettura dati:", e); data = []; } } return data; }
+        function saveAllData(data) {
+             console.log("saveAllData: Chiamata con dati:", data); // LOG A
+             try {
+                 localStorage.setItem('vademecumData', JSON.stringify(data));
+                 console.log("saveAllData: localStorage.setItem ESEGUITO con successo."); // LOG B
+                 return true;
+             } catch (e) {
+                 console.error("Errore salvataggio localStorage:", e); // LOG C
+                 alert("Errore durante il salvataggio locale. Spazio esaurito?");
+                 return false;
+             }
+         }
+        function getLayoutData() { const storedLayout = localStorage.getItem(LAYOUT_STORAGE_KEY); let layout = []; if (storedLayout) { try { layout = JSON.parse(storedLayout); if (!Array.isArray(layout)) layout = []; } catch (e) { console.error("Errore lettura layout:", e); layout = []; } } return layout; }
+        function saveLayoutData(layout) { try { localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout)); return true; } catch (e) { console.error("Errore salvataggio layout:", e); return false; } }
+        function getNextIconIndex() { return parseInt(localStorage.getItem(NEXT_ICON_INDEX_KEY) || '0', 10); }
+        function saveNextIconIndex(index) { localStorage.setItem(NEXT_ICON_INDEX_KEY, index.toString()); }
+
+        // --- Gestione Salvataggio Dati (Add/Edit) con LOG ---
+        function handleSave(event) {
+            console.log("--- handleSave INIZIATO ---"); // LOG 1
+            event.preventDefault();
+            const editingId = parseInt(editItemIdInput.value, 10);
+            const dataType = modalDataTypeInput.value;
+            if (!dataType) { alert("Errore: tipo dato mancante."); console.error("handleSave: Tipo dato mancante!"); return; }
+            const field1Value = document.getElementById('field1').value.trim(); const field2Value = document.getElementById('field2').value.trim(); const field3Value = document.getElementById('field3').value.trim();
+            if (!field1Value && !field2Value && !field3Value) { alert("Inserisci almeno un dato."); console.log("handleSave: Nessun dato inserito."); return; }
+            let existingData = getSavedData(); let success = false; let dataToSave = null;
+
+            if (!isNaN(editingId) && editingId > 0) { // Usa isNaN per verificare se è un numero valido
+                console.log("handleSave: Modalità Modifica, ID:", editingId); // LOG 2a
+                let itemFound = false;
+                const updatedData = existingData.map(item => { if (item.id === editingId) { itemFound = true; return { ...item, field1: field1Value, field2: field2Value, field3: field3Value }; } return item; });
+                if (itemFound) { console.log("handleSave: Elemento trovato, tentando di salvare modifiche..."); dataToSave = updatedData; success = saveAllData(updatedData); } // LOG 3a
+                else { alert("Errore: elemento da modificare non trovato."); console.error("handleSave: ID modifica non trovato", editingId); }
+            } else {
+                console.log("handleSave: Modalità Aggiunta, Tipo:", dataType); // LOG 2b
+                const newData = { id: Date.now(), type: dataType, field1: field1Value, field2: field2Value, field3: field3Value, timestamp: new Date().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short'}) };
+                existingData.unshift(newData); console.log("handleSave: Nuovo elemento creato, tentando di salvare..."); dataToSave = existingData; success = saveAllData(existingData); // LOG 3b
+            }
+
+            console.log("handleSave: Risultato salvataggio (success):", success); // LOG 4
+            console.log("handleSave: Dati che si è tentato di salvare:", dataToSave); // LOG 5
+
+            if (success) {
+                alert(`Dati ${editingId ? 'modificati' : 'salvati'}!`);
+                console.log("handleSave: Salvataggio riuscito, chiudo modale e aggiorno vista."); // LOG 6
+                closeModal();
+                if (currentDetailType) { displayDetailData(currentDetailType); }
+                else { filterDashboardData(); }
+            } else {
+                 console.error("handleSave: Salvataggio fallito (success è false)."); // LOG 7
+            }
+             console.log("--- handleSave FINE ---"); // LOG 8
+        }
+
+        // --- Toggle Accordion ---
+        function toggleItemContent(itemId) { const contentElement = document.getElementById(`content-${itemId}`); const headerElement = document.getElementById(`header-${itemId}`); if (contentElement && headerElement) { contentElement.classList.toggle('visible'); headerElement.classList.toggle('expanded'); const icon = headerElement.querySelector('.toggle-icon i'); if (icon) { icon.classList.toggle('fa-chevron-down'); icon.classList.toggle('fa-chevron-up'); } } }
+
+        // --- Funzione HTML Card Griglia ---
+        function createGridCardHTML(cardData) { const cardElement = document.createElement('div'); const cardColorClass = CARD_CLASS_CYCLE[ICON_CYCLE.indexOf(cardData.icon)] || 'card-light'; cardElement.classList.add('card', cardColorClass, 'custom-card'); cardElement.dataset.type = cardData.type; cardElement.dataset.layoutId = cardData.id; const escapeHTML = (str) => str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; cardElement.innerHTML = `<button class="card-delete-icon" data-layout-id="${cardData.id}" title="Elimina questo riquadro"><i class="fas fa-trash-alt"></i></button><div class="card-add-icon" data-type="${escapeHTML(cardData.type)}" title="Aggiungi a ${escapeHTML(cardData.type)}">+</div><div class="card-icon"><img src="images/${escapeHTML(cardData.icon)}" alt="${escapeHTML(cardData.type)}"></div><p>${escapeHTML(cardData.type)}</p>`; addCardClickListeners(cardElement); return cardElement; }
+
+        // --- Funzioni Visualizzazione Dati ---
+        function createAccordionItemHTML(item) { const listItem = document.createElement('li'); listItem.classList.add('detail-item'); const itemId = item.id; const escapeHTML = (str) => str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') : ''; const type = escapeHTML(item.type); const field1 = escapeHTML(item.field1); const field2 = escapeHTML(item.field2); const field3 = escapeHTML(item.field3); const timestamp = escapeHTML(item.timestamp); const isArchived = type === 'Archivio'; const controlsHTML = `<div class="item-controls"><button class="edit-btn" onclick="event.stopPropagation(); openModalForEdit(${itemId})" title="Modifica"><i class="fas fa-pencil-alt"></i></button>${!isArchived ? `<button class="archive-btn" onclick="event.stopPropagation(); archiveItem(${itemId})" title="Archivia"><i class="fas fa-archive"></i></button>` : ''}<button class="delete-btn" onclick="event.stopPropagation(); deleteItem(${itemId})" title="Elimina"><i class="fas fa-times"></i></button><span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></div>`; listItem.innerHTML = `<div class="item-header" id="header-${itemId}" onclick="toggleItemContent(${itemId})"><h3>${field1 || 'Oggetto non specificato'}</h3>${controlsHTML}</div><div class="item-content" id="content-${itemId}"><p><strong>Tipo:</strong> ${type || 'N/D'}</p><p><strong>Descrizione:</strong><br>${field2.replace(/\n/g, '<br>') || 'Nessuna descrizione.'}</p><p><strong>Note:</strong><br>${field3.replace(/\n/g, '<br>') || 'Nessuna nota.'}</p><em>Inserito il: ${timestamp || 'N/D'}</em></div>`; return listItem; }
+        function displaySavedData(dataToDisplay = null, searchTerm = '') { if (!dashboardDataContainer) return; dashboardDataContainer.innerHTML = '<h2>Inserimenti recenti</h2>'; const data = dataToDisplay !== null ? dataToDisplay : getSavedData(); if (data.length === 0) { const message = searchTerm ? 'Nessun risultato trovato.' : 'Nessun inserimento presente.'; dashboardDataContainer.innerHTML += `<p class="no-data">${message}</p>`; return; } const list = document.createElement('ul'); data.forEach(item => list.appendChild(createItemHTML_Dashboard(item, searchTerm))); dashboardDataContainer.appendChild(list); }
+        function createItemHTML_Dashboard(item, searchTerm = '') { const listItem = document.createElement('li'); if (searchTerm) { listItem.classList.add('search-result-item'); listItem.dataset.id = item.id; listItem.dataset.type = item.type; } const highlightedType = highlightText(item.type, searchTerm); const highlightedField1 = highlightText(item.field1, searchTerm); const highlightedField2 = highlightText(item.field2, searchTerm); listItem.innerHTML = `<strong style="color: #3a6b4b;">${highlightedType || 'N/D'}</strong> - ${highlightedField1 || ''}<br><small>${highlightedField2.substring(0,100)}${highlightedField2.length > 100 ? '...' : ''}</small><br><em>${item.timestamp || 'N/D'}</em>`; return listItem; }
+        function displayDetailData(type) { if (!detailAccordionList) return; detailAccordionList.innerHTML = ''; const allData = getSavedData(); const filteredData = allData.filter(item => item.type === type); if (filteredData.length === 0) { detailAccordionList.innerHTML = '<li class="no-data">Nessun inserimento per questa sezione.</li>'; return; } filteredData.forEach(item => detailAccordionList.appendChild(createAccordionItemHTML(item))); }
+
+        // --- Funzioni Azioni Item ---
+        function deleteItem(idToDelete) { if (!confirm('Sei sicuro di voler eliminare?')) { return; } let existingData = getSavedData(); const updatedData = existingData.filter(item => item.id !== idToDelete); if (updatedData.length === existingData.length) { console.warn("ID non trovato:", idToDelete); return; } if(saveAllData(updatedData)) { console.log("Elemento eliminato."); if (currentDetailType) { displayDetailData(currentDetailType); } else { filterDashboardData(); } } }
+        function archiveItem(itemId) { if (!confirm('Sei sicuro di voler archiviare?')) { return; } let allData = getSavedData(); let itemArchived = false; const updatedData = allData.map(item => { if (item.id === itemId) { if (item.type === 'Archivio') { return item; } itemArchived = true; return { ...item, type: 'Archivio' }; } return item; }); if (!itemArchived) { console.warn("Elemento da archiviare non trovato o già archiviato:", itemId); return; } if (saveAllData(updatedData)) { alert(`Elemento archiviato.`); if (currentDetailType) { displayDetailData(currentDetailType); } else { filterDashboardData(); } } else { alert("Errore durante l'archiviazione."); } }
+
+        // --- Funzione Elimina Card Custom ---
+        function handleDeleteCustomCard(layoutId) { if (!confirm("Eliminare questo riquadro dalla griglia? (Le voci associate non verranno eliminate)")) { return; } let layoutData = getLayoutData(); const initialLength = layoutData.length; const updatedLayout = layoutData.filter(card => card.id !== layoutId); if (updatedLayout.length === initialLength) { console.warn("Riquadro custom non trovato:", layoutId); alert("Errore: riquadro non trovato."); return; } if (saveLayoutData(updatedLayout)) { const cardToRemove = mainGridContainer.querySelector(`.card.custom-card[data-layout-id="${layoutId}"]`); if (cardToRemove) { cardToRemove.remove(); alert("Riquadro eliminato."); } else { console.warn("Elemento DOM riquadro non trovato:", layoutId); } } else { alert("Errore durante l'aggiornamento del layout."); } }
+
+        // --- Funzione Filtro Dashboard ---
+        function filterDashboardData() { const searchTerm = searchInput.value.trim().toLowerCase(); const allData = getSavedData(); clearSearchBtn.style.display = searchTerm ? 'block' : 'none'; if (!searchTerm) { displaySavedData(allData, ''); return; } const filteredData = allData.filter(item => (item.type?.toLowerCase().includes(searchTerm)) || (item.field1?.toLowerCase().includes(searchTerm)) || (item.field2?.toLowerCase().includes(searchTerm)) || (item.field3?.toLowerCase().includes(searchTerm)) ); displaySavedData(filteredData, searchTerm); }
+        // --- Funzione Highlight ---
+        function highlightText(text, searchTerm) { if (!searchTerm || !text) { return text || ''; } try { const escapedTerm = searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'); const regex = new RegExp(escapedTerm, 'gi'); return text.replace(regex, (match) => `<mark class="highlight">${match}</mark>`); } catch (e) { console.error("Highlight RegExp Error:", e); return text; } }
+        // --- Logica Aggiungi Card ---
+        addCardBtn.addEventListener('click', () => { const newCardName = prompt("Nome nuovo riquadro:"); if (!newCardName || newCardName.trim() === '') { alert("Nome non valido."); return; } const trimmedName = newCardName.trim(); const layoutData = getLayoutData(); const existingCard = layoutData.find(card => card.type.toLowerCase() === trimmedName.toLowerCase()); const predefinedCards = Array.from(document.querySelectorAll('.grid-container .card:not(#addCardBtn):not(.custom-card)')).map(c => c.dataset.type?.toLowerCase()); if (existingCard || predefinedCards.includes(trimmedName.toLowerCase()) || trimmedName.toLowerCase() === 'Archivio' ) { alert(`Riquadro "${trimmedName}" esiste già.`); return; } let currentIconIndex = getNextIconIndex(); const nextIcon = ICON_CYCLE[currentIconIndex % ICON_CYCLE.length]; const nextIndex = (currentIconIndex + 1) % ICON_CYCLE.length; saveNextIconIndex(nextIndex); const newCardData = { id: Date.now(), type: trimmedName, icon: nextIcon }; layoutData.push(newCardData); if (saveLayoutData(layoutData)) { const newCardElement = createGridCardHTML(newCardData); mainGridContainer.appendChild(newCardElement); alert(`Riquadro "${trimmedName}" aggiunto!`); } else { alert("Errore salvataggio nuovo riquadro."); } });
+        // --- Carica Layout Custom ---
+        function loadCustomLayout() { const layoutData = getLayoutData(); layoutData.forEach(cardData => { const customCardElement = createGridCardHTML(cardData); mainGridContainer.appendChild(customCardElement); }); }
+
+        // --- Event Listeners ---
+        modal.querySelector('.modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (event) => { if (event.target === modal) { closeModal(); } });
+        searchInput.addEventListener('input', () => { clearTimeout(searchDebounceTimer); if (dashboardView.classList.contains('active')) { searchDebounceTimer = setTimeout(filterDashboardData, DEBOUNCE_DELAY); } });
+        clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; clearSearchBtn.style.display = 'none'; filterDashboardData(); searchInput.focus(); });
+        dashboardDataContainer.addEventListener('click', (event) => { const clickedItem = event.target.closest('.search-result-item'); if (clickedItem) { const type = clickedItem.dataset.type; if (type) { navigateToDetail(type); } } });
+
+        // --- Inizializzazione ---
+        document.addEventListener('DOMContentLoaded', () => { loadCustomLayout(); navigateToDashboard(); });
+    </script>
+
+</body>
+</html>
